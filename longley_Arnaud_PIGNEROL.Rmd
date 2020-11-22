@@ -1,0 +1,707 @@
+---
+title: "Study of Longley dataset"
+output: html_document
+---
+
+# Introduction
+
+### In our Mathematics for Data Science course, we had to do the analysis of a dataset. The goal for us is to be able to understand the process and be able to do it by ourselves later.
+### Therefore, we will work on the dataset Longley on R.
+
+
+
+# Data Exploration
+
+### The dataset Longley stores data from the United State between 1947 and 1962. It regroups the GNP (Gross National Product) and its deflator, the number of unemployed people, in the armed forces and employed (in 1000s). It also contains the number of people above 14-years old and non-institutionalized (in 1000s), basically undocumented adults and teenagers.
+
+### There is two important events which took place during the period of time recorded by our dataset: the  Korea War (1950 – 1953) and the Indochina War (1954 – 1975). These wars were important enough to have an impact on the life of the population at this time so we can imagine they would have influenced our data in some way.
+
+
+
+
+
+# Data Visualization
+
+### First of all, we have to look at what our data look like.
+```{r}
+longley
+```
+
+
+### Even if we can not conclude something from the table like this, we can state some evolutions. For example, the GNP deflator is a positive straight line and there is an increase of the size of the armed forces in 1951.
+
+### Using the summary method, we can go further in our visualization
+```{r}
+#GNP deflator
+summary(longley $ GNP.deflator)
+```
+```{r}
+#GNP
+summary(longley $ GNP) 
+```
+```{r}
+#Unemployed
+summary(longley $ Unemployed)
+```
+
+```{r}
+#Armed.Forces
+summary(longley $ Armed.Forces)
+```
+```{r}
+#Population
+summary(longley $ Population)
+```
+```{r}
+#Employed
+summary(longley $ Employed)
+```
+
+### With this, we can see there were a massive increase of unemployed people in USA during these 15 years, as well as the number of people in the armed forces. In contrary, the number of employed people did not really change, which could means there were almost zero impact by the war.
+
+### Even if the data are still not easily readable, it allows us to make a subject and some hypothesis, as the ones below.
+
+## Subject : The impact of the GNP on the people in the USA between 1947 and 1962
+
+#### 1.	Is there a correlation between the number of unemployed people and the ones in the armed forces?
+
+#### 2.	Is there a correlation between the GNP and the number of unemployed people? 
+
+#### 3.	Is there a correlation between the GNP and the number of people in the armed forces?
+
+#### 4.	Is there a correlation between the number of people in the armed forces and the ones undocumented? 
+
+#### 5.	Is there a correlation between the number of unemployed people and the ones undocumented?
+
+#### 6. Is there a correlation between the number of undocumented people and the evolution of the GNP?
+
+#### 7. Is there a correlation between the GNP and the number of employed people?
+
+#### 8. Is there a correlation between the number of employed people and the number of employed people?
+
+
+
+
+# Testing Hypothesis
+
+#### We first have to import libaries to do our graphs
+
+```{r}
+library(ggplot2)
+library("tidyverse")
+library("tibble")
+library("olsrr")
+```
+
+#### We also have to create a new data.frame which will be useful later
+```{r}
+newAF <- as_tibble(longley)
+army <- newAF[longley $Armed.Forces >= 200,] $GNP
+
+newGNP <- as_tibble(longley)
+gnp <- newGNP[longley $GNP >= 300,] $Armed.Forces
+
+newPop <- as_tibble(longley)
+population <- newAF[longley $Population >= 111,] $Armed.Forces
+
+unemployed <- c(209.9, 193.2, 187.0, 357.8, 290.4, 282.2, 293.6, 468.1, 381.3, 393.1, 480.6, 400.7)
+
+newDataFrame <- data.frame(gnp, army, population, unemployed)
+```
+
+
+
+### 1) Is there a correlation between the number of unemployed people and the ones in the armed forces?
+#### For the first hypothesis, we can see on the graphs below what seems like a correlation between the number of unemployed people and the number of people in the armed forces.
+#### However, the p-value is superior to 0.05 so we reject the hypothesis if we do not touch our data. Nonetheless, we can distinguish two groups, so we will remodel our data to be able to work on it.
+
+```{r}
+df <- longley %>% 
+  select (Year, Unemployed, Armed.Forces) %>%
+  gather(key = "variable", value = "value", -Year)
+
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Armed Forces and Unemployed by Year")
+```
+```{r}
+ggplot(longley, aes(x = Unemployed, y = Armed.Forces, colour = Armed.Forces)) +
+  geom_point(size = 4) +
+  ggtitle("Number of Unemployed people Vs number of people in the Armed Forces")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Unemployed,main = "Unemployed")
+boxplot(longley$Armed.Forces,main = "Armed.Forces")
+```
+
+```{r}
+mod <- lm(formula = Unemployed ~ Armed.Forces, data=longley)
+summary(mod)
+```
+
+
+### 1) Remodelled
+#### We are forced to remodel our dataset to create a good model
+#### We can clearly see the new model as a positive linear one, meaning there is a correlation between the number of people in the army and the number of unemployed people. The p-value is largely under 0.05 so we can not reject the hypothesis.
+```{r}
+ggplot(newDataFrame, aes(x = army, y = unemployed)) +
+  geom_point(size = 4) +
+  labs(y = "Unemployed", x = "Armed.Forces") +
+  ggtitle("Number of people in the armed forces Vs the number of unemployed people")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(newDataFrame$army,main = "Armed.Forces")
+boxplot(newDataFrame$unemployed,main = "Unemployed")
+```
+
+
+```{r}
+mod <- lm(formula = army ~ unemployed, data=newDataFrame)
+summary(mod)
+```
+
+
+
+
+
+
+
+### 2) Is there a correlation between the GNP and the number of unemployed people? 
+#### For the second hypothesis, we can state that, over the years, the GNP increases constantly and seems to have almost no correlation with the number of unemployed people. The only possible correlation is the fact the number of unemployed people increases dramatically when there is a little drop in the GNP produced.
+#### However the hypothesis can not be rejected based on the p-value, meaning there is a correlation between these variable.
+
+```{r}
+df <- longley %>% 
+  select (Year, Unemployed, GNP) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Unemployed and the US GNP by Year")
+```
+```{r}
+ggplot(longley, aes(x = Unemployed, y = GNP)) +
+  geom_point(size = 4) + 
+  ggtitle("Number of Unemployed people Vs the evolution of the GNP")
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Unemployed,main = "Unemployed")
+boxplot(longley$GNP,main = "GNP")
+```
+
+
+
+```{r}
+mod <- lm(formula = Unemployed ~ GNP, data=longley)
+summary(mod)
+```
+
+### 3) Is there a correlation between the GNP and the number of people in the armed forces?
+#### For the third hypothesis, we can state without doubt there is no correlation at all between the GNP and the number of people in armed forces.
+#### However, we can clearly see two groups in this graph. Therefore, this can not be analyze like this, and we have to delete some values to work on it. For this case, we delete the values under 200.
+
+```{r}
+df <- longley %>% 
+  select (Year, Armed.Forces, GNP) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Armed Forces and the US GNP by Year")
+```
+```{r}
+ggplot(longley, aes(x = Armed.Forces, y = GNP, colour = Armed.Forces)) +
+  geom_point(size = 4) +
+  ggtitle("Number of people in the Armed Forces Vs the evolution of the GNP")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Armed.Forces,main = "Armed.Forces")
+boxplot(longley$GNP,main = "GNP")
+```
+
+### 3) Remodelled
+#### We are forced to remodel our dataset to create a good model
+#### We can clearly see the new model as a negative linear one, meaning there is a correlation between the number of people in the army and the evolution of the GNP. The p-value is largely under 0.05 so we can not reject the hypothesis.
+```{r}
+ggplot(newDataFrame, aes(x = army, y = gnp)) +
+  geom_point(size = 4) +
+  labs(y = "GNP", x = "Armed.Forces") +
+  ggtitle("Number of people in the armed forces Vs the evolution of the GNP")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(newDataFrame$army,main = "Armed.Forces")
+boxplot(newDataFrame$gnp,main = "GNP")
+```
+
+
+```{r}
+mod <- lm(formula = gnp ~ army, data=newDataFrame)
+summary(mod)
+```
+
+
+### 4) Is there a correlation between the number of people in the armed forces and the ones undocumented?
+#### For the fourth hypothesis, there is no correlation again between the two curbs, the number of people in armed forces and the number of undocumented people.
+#### Howeber, as before, we can clearly see two groups in this graph. Therefore, this can not be analyze like this, and we have to delete some values to work on it. For this case, we delete the values under 200.
+```{r}
+df <- longley %>% 
+  select (Year, Armed.Forces, Population) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Armed Forces and Number of Undocumented people by Year")
+```
+```{r}
+ggplot(longley, aes(x = Armed.Forces, y = Population, colour = Armed.Forces)) +
+  geom_point(size = 4) +
+  ggtitle("Number of Armed Forces people Vs number of undocumented people")
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Armed.Forces,main = "Armed.Forces")
+boxplot(longley$Population,main = "Undocumented")
+```
+
+
+#### 4) Remodelled
+
+#### As before, we are forced to remodel our dataset to create a good model
+#### We can clearly see the new model as a negative linear one, meaning there is a correlation between the number of people in the army and the number of undocumented people. The p-value is also quite low, meaning we can not reject the hypothesis.
+
+```{r}
+ggplot(newDataFrame, aes(x = army, y = population)) +
+  geom_point(size = 4) +
+  labs(y = "Undocumented", x = "Armed.Forces") +
+  ggtitle("Number of people in the armed forces Vs the number of undocumented ones")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(newDataFrame$army,main = "Armed.Forces")
+boxplot(newDataFrame$population,main = "Undocumented")
+```
+
+```{r}
+mod <- lm(formula = population ~ army, data=newDataFrame)
+summary(mod)
+```
+
+
+
+
+
+###	5) Is there a correlation between the number of unemployed people and the ones undocumented?
+#### For the fifth hypothesis, there is again no correlation between the two curbs, the number of unemployed people and the number of undocumented people.
+#### However, the p-value is smaller to 0.05 by far so we can not reject the hypothesis. Therefore, there must be a correlation between these two parameters.
+```{r}
+df <- longley %>% 
+  select (Year, Unemployed, Population) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Unemployed and Population undocumented by Year")
+```
+```{r}
+ggplot(longley, aes(x = Unemployed, y = Population)) +
+  geom_point(size = 4) +
+  ggtitle("Number of Unemployed people Vs number of undocumented people")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Unemployed,main = "Unemployed")
+boxplot(longley$Population,main = "Undocumented")
+```
+
+```{r}
+mod <- lm(formula = Unemployed ~ Population, data=longley)
+summary(mod)
+```
+
+### 6) Is there a correlation between the number of undocumented people and the evolution of the GNP?
+
+#### For the last hypothesis we could think, based on the first graph, that there is a little correlation between the GNP and the number of undocumented people. However, the the next graph shows there is an important correlation between them, and it is proved by the p-value, so we can not reject the hypothesis.
+
+```{r}
+df <- longley %>% 
+  select (Year, GNP, Population) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of undocumented people people Vs the evolution of the GNP")
+```
+
+```{r}
+ggplot(longley, aes(x = Population, y = GNP)) +
+  geom_point(size = 4) +
+  ggtitle("Number of undocumented people people Vs the evolution of the GNP")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$GNP,main = "GNP")
+boxplot(longley$Population,main = "Undocumented")
+```
+
+
+```{r}
+mod <- lm(formula = GNP ~ Population, data=longley)
+summary(mod)
+```
+
+### 7) Is there a correlation between the GNP and the number of employed people?
+#### For the second hypothesis, we can state that, over the years, the GNP increases constantly and seems to have almost no correlation with the number of unemployed people. The only possible correlation is the fact the number of unemployed people increases dramatically when there is a little drop in the GNP produced.
+#### However the hypothesis can not be rejected based on the p-value, so there is a correlation between these two parameters.
+
+```{r}
+df <- longley %>% 
+  select (Year, Employed, GNP) %>%
+  gather(key = "variable", value = "value", -Year)
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Employed people and the US GNP by Year")
+```
+```{r}
+ggplot(longley, aes(x = Employed, y = GNP)) +
+  geom_point(size = 4) + 
+  ggtitle("Number of Employed people Vs the evolution of the GNP")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$GNP,main = "GNP")
+boxplot(longley$Employed,main = "Employed")
+```
+
+```{r}
+mod <- lm(formula = Employed ~ GNP, data=longley)
+summary(mod)
+```
+
+
+### 8) Is there a correlation between the number of employed people and the number of employed people?
+
+#### At first, we can think there is a small correlation between the number of employed people and the number of unemployed ones.
+
+#### This is confirmed by the p-value, so the hypothesis is not rejected.
+
+
+```{r}
+df <- longley %>% 
+  select (Year, Unemployed, Employed) %>%
+  gather(key = "variable", value = "value", -Year)
+
+
+ggplot(df, aes(x = Year, y = value)) +
+  geom_line(aes(color = variable)) + 
+  scale_color_manual(values = c("red", "blue")) +
+  ggtitle("Number of Employed and Unemployed people by Year")
+```
+```{r}
+ggplot(longley, aes(x = Unemployed, y = Employed)) +
+  geom_point(size = 4) +
+  ggtitle("Number of Unemployed people Vs number of Employed people")
+```
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(longley$Unemployed,main = "Unemployed")
+boxplot(longley$Employed,main = "Employed")
+```
+
+```{r}
+mod <- lm(formula = Unemployed ~ Employed, data=longley)
+summary(mod)
+```
+
+
+# Fitting Model
+
+#### we will not treat the rejected hypothesis
+
+### 1) Is there a correlation between the number of unemployed people and the ones in the armed forces?
+
+```{r}
+ggplot(newDataFrame, aes(x = army, y = unemployed)) +
+  geom_point(size = 4) +
+  labs(y = "Unemployed", x = "Armed.Forces") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 350, y = 470, label = "y = 0.5 * x + 200", color = "blue", size = 5) +
+  ggtitle("Number of people in the armed forces Vs the number of unemployed people")
+```
+
+```{r}
+mod <- lm(formula = army ~ unemployed, data=newDataFrame)
+summary(mod)
+```
+
+```{r}
+model <- lm(army ~ unemployed, data=newDataFrame)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is very high, a little below 50, meaning the model will not be very accurate. However, the value of r-squared is equalled to 0.6, meaning the model is still a good one, but not an enough one because we need it to be above 0.7. Therefore, we can not validate the hypothesis.
+
+#### Because the hypothesis is not validate, we will not do some predictions.
+
+
+
+
+
+### 2) Is there a correlation between the GNP and the number of unemployed people? 
+
+```{r}
+ggplot(longley, aes(x = Unemployed, y = GNP)) +
+  geom_point(size = 4) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 220, y = 550, label = "y = 0.35 * x + 290", color = "blue", size = 5) +
+  ggtitle("Number of Unemployed people Vs the evolution of the GNP")
+```
+
+
+```{r}
+mod <- lm(formula = GNP ~ Unemployed, data=longley)
+summary(mod)
+```
+
+```{r}
+model <- lm(GNP ~ Unemployed, data=longley)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is very high, above 80, meaning the model will not be very accurate. This is confirmed by the low value of r-squared.Therefore, we can not validate the hypothesis.
+
+#### Because the hypothesis is not validate, we will not do some predictions.
+
+
+
+
+
+### 3) Is there a correlation between the GNP and the number of people in the armed forces?
+
+```{r}
+ggplot(newDataFrame, aes(x = army, y = gnp)) +
+  geom_point(size = 4) +
+  labs(y = "GNP", x = "Armed.Forces") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 500, y = 350, label = "y = -0.16 * x + 340", color = "blue", size = 5) +
+  ggtitle("Number of people in the armed forces Vs the evolution of the GNP")
+```
+
+```{r}
+mod <- lm(formula = gnp ~ army, data=newDataFrame)
+summary(mod)
+```
+
+```{r}
+model <- lm(army ~ gnp, data=newDataFrame)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is high, almost equals to 50, meaning the model will not be very accurate. However, the value of r-squared is equalled to 0.6, meaning the model is still a good one. Therefore, we can not validate the hypothesis.
+
+#### Because the hypothesis is not validate, we will not do some predictions.
+
+
+
+
+### 4) Is there a correlation between the number of people in the armed forces and the ones undocumented? 
+
+```{r}
+ggplot(newDataFrame, aes(x = army, y = population)) +
+  geom_point(size = 4) +
+  labs(y = "Population", x = "Armed.Forces") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 500, y = 350, label = "y = -0.18 * x + 345", color = "blue", size = 5) +
+  ggtitle("Number of people in the armed forces Vs the number of undocumented ones")
+```
+
+```{r}
+mod <- lm(formula = army ~ population, data=newDataFrame)
+summary(mod)
+```
+
+```{r}
+model <- lm(army ~ population, data=newDataFrame)
+ols_plot_resid_fit(model)
+```
+
+
+
+#### We can see the residual standard error is high, almost equals to 50, meaning the model will not be very accurate. However, the value of r-squared is equalled to 0.6, meaning the model is still a good one. Therefore, we can not validate the hypothesis.
+
+
+#### Because the hypothesis is not validate, we will not do some predictions.
+
+
+
+
+### 5) Is there a correlation between the number of unemployed people and the ones undocumented?
+
+```{r}
+ggplot(longley, aes(x = Unemployed, y = Population)) +
+  geom_point(size = 4) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 220, y = 130, label = "y = 0.035 * x + 110", color = "blue", size = 5) +
+  ggtitle("Number of Unemployed people Vs number of undocumented people")
+```
+
+```{r}
+mod <- lm(formula = Unemployed ~ Population, data=longley)
+summary(mod)
+```
+
+```{r}
+model <- lm(Population ~ Unemployed, data=longley)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is high, with a value of 70, meaning the model will not be very accurate. Futhermore, the value of r-squared is below 0.5 by a little, meaning the model is still a good one but with a medium accuracy. Therefore, we can not validate the hypothesis.
+
+#### Because the hypothesis is not validate, we will not do some predictions.
+
+
+
+### 6) Is there a correlation between the number of undocumented people and the evolution of the GNP ?
+
+
+```{r}
+ggplot(longley, aes(x = Population, y = GNP)) +
+  geom_point(size = 4) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 110, y = 550, label = "y = 2.5* x + 235", color = "blue", size = 5) +
+  ggtitle("Number of undocumented people people Vs the evolution of the GNP")
+```
+
+
+```{r}
+mod <- lm(formula = GNP ~ Population, data=longley)
+summary(mod)
+```
+
+```{r}
+model <- lm(Population ~ GNP, data=longley)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is low, below 15, meaning the model might be very accurate. Futhermore, the value of r-squared is above 0.9 and almost equalled to 1, meaning the model is almost a perfect one. Therefore, there is a very important correlation between the number of undocumented people and the evolution of the GNP and we can validate the hypothesis.
+
+
+#### We can do some predictions now we have the adjusted line
+
+```{r}
+2.5 * 135 + 235
+```
+
+#### If there is no change, there will be a GNP of $572.5 thousand while 135 thousand people will be non-institutionalized
+
+
+### 7) Is there a correlation between the GNP and the number of employed people? 
+
+```{r}
+ggplot(longley, aes(x = Employed, y = GNP)) +
+  geom_point(size = 4) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 61.5, y = 550, label = "y = 4 * x + 235", color = "blue", size = 5) +
+  ggtitle("Number of Employed people Vs the evolution of the GNP")
+```
+
+```{r}
+mod <- lm(formula = GNP ~ Employed, data=longley)
+summary(mod)
+```
+
+```{r}
+model <- lm(GNP ~ Employed, data=longley)
+ols_plot_resid_fit(model)
+```
+
+#### We can see the residual standard error is low, above 15 by little, meaning the model will be very accurate. Futhermore, the value of r-squared is above 0.9 and almost equalled to 1, meaning the model is almost a perfect one. Therefore, there is a very important correlation between the number of employed people and the evolution of the GNP and we can validate the hypothesis.
+
+#### We can do some predictions now we have the adjusted line
+
+```{r}
+4 * 80 + 235
+```
+
+#### If there is no change, there will be a GNP of $555 thousand while 80 thousand people will be employed
+
+
+
+
+### 8) Is there a correlation between the number of employed and the number of unemployed people?
+
+```{r}
+ggplot(longley, aes(x = Employed, y = Unemployed)) +
+  geom_point(size = 4) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) + 
+  geom_text(x = 61.5, y = 470, label = "y = 1.85 * x + 245", color = "blue", size = 5) +
+  ggtitle("Number of Employed people Vs the number of Unemployed people")
+```
+
+```{r}
+mod <- lm(formula = Employed ~ Unemployed, data=longley)
+summary(mod)
+```
+
+```{r}
+model <- lm(Unemployed ~ Employed, data=longley)
+ols_plot_resid_fit(model)
+```
+
+
+#### We can see the residual standard error is low, equalled to 3, meaning the model will be equally reparted from each side of the adjusted line. However, the value of r-squared is around 0.2, meaning the model is really not a good one. Therefore, we can not validate the hypothesis.
+
+#### Because we can not validate the hypothesis, we will not try to do predictions.
+
+
+
+
+
+
+# Conclusion
+
+#### Based on our tests, the GNP impacts directly the number of undocumented people and the number of employed people. The average values of r-squared seems to show the GNP impacts to a lesser extent the number of unemployed people and the number of people in the armed forces. In contrary, the GNP is impacted by the number of people in the army, so the number of people in army impacts, at least indirectly, all the population of the country during this period of time.
+
+#### We can conclude the better the GNP the greater the number of employed and undocumented people. This means the greater the production, the more persons are in an irregulary situation, and the more people who are not find a job. 
+
+#### The undocumented people can be people who lost all of their properties, political refugees or illegal immigrants. However, they can not survive without money. Therefore, they must have a part-time job, which is not the case because they would be in the data "Employed", have an illicit work or rob from people.
+
+#### These people have to rectify their situation. When this is done, if they want to work and be considered as an "Employed" person, they can not work as the same as before. Therefore, either they find a job or they still work illicitly. In the second case or if they do not work, they are put in the "Unemployed" case, because they are in a regular situation. Therefore, this part of the population will continue to grow non-stop. Indeed, with the possibility to make people work undeclared, employers will hire less (or only "meriting" people) but producing at least as much as before. The salary of their employees will not decrease and can increase, as we saw on our graphs.
+
+#### We also saw that wars cost a lot of money, meaning the GNP will not increase as much as it could, and can decrease. If the GNP decrease, the lifestyle of all the people will changed, and not in a good way. Plus, people returning from war are generally handicapped or have traumas. These persons may not be in the capacity to work, physically or mentally, for the rest of their life. Therefore, they will be put in the "Unemployed" case, or may be put in the "Undocumented" case, because they will not have enough money to keep their rights and properties.
+
+
+
+
+### Arnaud PIGNEROL
